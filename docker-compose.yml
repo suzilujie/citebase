@@ -1,0 +1,34 @@
+# CiteBase - self-hosted knowledge base Q&A (RAG).
+#
+# Only the database runs in Docker: the app runs on the host with Bun so the
+# edit-run loop stays fast during development. `start.ps1` brings this up first.
+#
+# Ports are deliberately non-default so they do not clash with the services
+# already running on this machine (5433 is used by automation-kit):
+#   postgres -> 5440 (host side; 5432 / 5433 are taken)
+
+services:
+  postgres:
+    # pgvector is pre-installed in this image, so `create extension vector` works
+    # without a custom Dockerfile.
+    image: pgvector/pgvector:pg17
+    container_name: citebase-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ}
+    ports:
+      - "5440:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pg_data:

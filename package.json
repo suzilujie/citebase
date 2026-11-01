@@ -1,0 +1,44 @@
+{
+  "name": "citebase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted knowledge base Q&A with verifiable citations",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "eval": "bun run src/eval/cli.ts",
+    "reembed": "bun run src/tools/reembed.ts",
+    "seed": "bun run src/tools/seed.ts",
+    "make:pdf": "bun run src/tools/make-sample-pdf.ts",
+    "lint": "biome check src web/src"
+  },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "pg": "^8.13.1",
+    "unpdf": "^0.12.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "bun-types": "^1.1.34",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "lucide-react": "^0.468.0",
+    "postcss": "^8.5.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "tailwind-merge": "^2.5.5",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}

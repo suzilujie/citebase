@@ -1,0 +1,10 @@
+.env
+node_modules/
+public/
+web/dist/
+*.log
+!work-*.log
+*.out
+*.err
+evals/out/
+.bun/

@@ -1,0 +1,111 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2498 >>
+stream
+BT
+/F1 11 Tf
+15 TL
+1 0 0 1 56 786 Tm
+(Invoice Processing Guide) Tj T*
+(Xinglan Technology Co., Ltd. - Finance Operations / Accounts Payable) Tj T*
+(Version 3.2 - Effective 1 April 2025) Tj T*
+() Tj T*
+(1. Scope) Tj T*
+(This guide describes how accounts payable processes vendor invoices for goods and) Tj T*
+(services purchased against a purchase order. Employee expense claims are handled by) Tj T*
+(the expense policy and are out of scope here.) Tj T*
+() Tj T*
+(2. Submission window) Tj T*
+(Invoices must be submitted through the AP portal within 45 days of the invoice date.) Tj T*
+(Invoices received after the 45-day window are returned to the vendor and must be) Tj T*
+(re-issued with a current invoice date. The portal accepts PDF files up to 10 MB;) Tj T*
+(scanned images without a text layer are rejected automatically.) Tj T*
+() Tj T*
+(3. Required fields) Tj T*
+(Every invoice must state the vendor legal name, invoice number, invoice date,) Tj T*
+(purchase order number, subtotal, tax amount, total amount and the six-digit cost) Tj T*
+(center. An invoice without a purchase order number is placed on hold until a) Tj T*
+(matching PO is created. Holds longer than 15 business days are escalated to the) Tj T*
+(finance controller.) Tj T*
+() Tj T*
+(4. Approval matrix) Tj T*
+(Invoices under USD 1,000 are approved by the team lead.) Tj T*
+(Invoices from USD 1,000 to USD 10,000 are approved by the department head.) Tj T*
+(Invoices above USD 10,000 require approval from the CFO.) Tj T*
+(Approval must be completed within 5 business days, otherwise the request is) Tj T*
+(re-assigned to the next level in the matrix.) Tj T*
+() Tj T*
+(Every approved invoice keeps an audit trail: approver name, timestamp and the) Tj T*
+(purchase order it was matched against.) Tj T*
+() Tj T*
+(5. Payment terms) Tj T*
+(The standard payment term is Net 30 from the approval date, not from the invoice) Tj T*
+(date. A 2% early payment discount applies when an approved invoice is paid within) Tj T*
+(10 days of approval. Payments are executed every Tuesday and Thursday through the) Tj T*
+(banking partner.) Tj T*
+() Tj T*
+(Vendors requesting a change of bank details must submit a signed form; the change) Tj T*
+(takes effect only after a callback verification by the treasury team.) Tj T*
+() Tj T*
+(6. Duplicate invoices) Tj T*
+(The system detects a duplicate when the vendor name and the invoice number both) Tj T*
+(match an existing record, regardless of amount or submission date. Duplicates are) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 975 >>
+stream
+BT
+/F1 11 Tf
+15 TL
+1 0 0 1 56 786 Tm
+(blocked automatically and listed in the weekly exception report for the AP manager.) Tj T*
+(Re-submitting a blocked invoice never creates a second record.) Tj T*
+() Tj T*
+(7. Currency and exchange rates) Tj T*
+(Foreign currency invoices are converted at the exchange rate published on the) Tj T*
+(invoice date. A tolerance of 1.5% is allowed for rate differences; anything above) Tj T*
+(that requires a written explanation attached to the invoice record.) Tj T*
+() Tj T*
+(8. Late payment) Tj T*
+(Overdue invoices accrue interest at 0.05% per day, counted from the day after the) Tj T*
+(due date. Interest is paid only when the delay is caused by the company, not when) Tj T*
+(the vendor submitted incomplete documents.) Tj T*
+() Tj T*
+(9. Exceptions) Tj T*
+(Prepaid expenses are handled by the expense policy. Questions about a specific) Tj T*
+(invoice should be raised as an AP ticket and are answered within one business day.) Tj T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000002797 00000 n 
+0000002923 00000 n 
+0000003949 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+4046
+%%EOF

@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CiteBase 系统设计</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface-2: #334155;
+    --line: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --head: #f1f5f9;
+    --blue: #60a5fa;
+    --green: #4ade80;
+    --orange: #fb923c;
+    --red: #f87171;
+    --purple: #c4b5fd;
+    --cyan: #67e8f9;
+    --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.8 "Poppins", system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .page { max-width: 1100px; margin: 0 auto; padding: 48px 32px 96px; }
+  h1 {
+    font-size: 30px; line-height: 1.3; margin: 0 0 10px; color: var(--head);
+    font-weight: 600; letter-spacing: -0.02em; padding-bottom: 14px; border-bottom: 2px solid var(--line);
+  }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .meta { font: 500 11.5px/1.8 var(--mono); color: var(--faint); letter-spacing: .04em; }
+  h2 {
+    font-size: 22px; margin: 46px 0 12px; color: var(--head); font-weight: 600;
+    padding-left: 12px; border-left: 4px solid var(--blue); border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+  }
+  h3 {
+    font-size: 16.5px; margin: 28px 0 8px; color: var(--head); font-weight: 600;
+    padding-left: 10px; border-left: 3px solid var(--border);
+  }
+  h4 { font-size: 14.5px; margin: 20px 0 6px; color: var(--head); font-weight: 600; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  b, strong { color: var(--head); font-weight: 600; }
+  code {
+    font: 400 13px/1.6 var(--mono); background: #0b1220; border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; color: var(--cyan);
+  }
+  pre {
+    background: #0b1220; border-left: 3px solid var(--border); border-radius: 6px;
+    padding: 14px 16px; overflow-x: auto; font: 400 12.5px/1.7 var(--mono); color: #cbd5e1;
+  }
+  pre code { background: none; border: 0; padding: 0; color: inherit; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--surface-2); color: var(--head); font-weight: 500; }
+  td { color: var(--text); }
+  .card {
+    background: rgba(30, 41, 59, 0.55); border: 1px solid var(--line); border-left: 3px solid var(--blue);
+    border-radius: 6px; padding: 12px 16px; margin: 14px 0;
+  }
+  blockquote {
+    margin: 14px 0; padding: 12px 16px; background: rgba(251, 146, 60, 0.07);
+    border-left: 3px solid var(--orange); border-radius: 6px; color: var(--muted);
+  }
+  blockquote b { color: var(--orange); }
+  .toc {
+    position: fixed; top: 32px; right: 20px; width: 190px; max-height: calc(100vh - 64px);
+    overflow-y: auto; font-size: 12.5px; padding-left: 12px; border-left: 1px solid var(--line);
+  }
+  .toc strong {
+    display: block; font: 500 10px/1.8 var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--faint); margin-bottom: 6px;
+  }
+  .toc a { display: block; padding: 3px 0; color: var(--faint); text-decoration: none; }
+  .toc a:hover { color: var(--text); }
+  .toc a.active { color: var(--blue); }
+  @media (max-width: 1400px) { .toc { display: none; } }
+  @media print {
+    :root {
+      --bg: #fff; --surface: #f8fafc; --surface-2: #e2e8f0; --line: #cbd5e1;
+      --border: #94a3b8; --text: #111827; --muted: #374151; --faint: #4b5563; --head: #000;
+    }
+    body { background: #fff; color: #111827; }
+    .toc { display: none; }
+    pre { background: #f1f5f9; color: #111827; }
+    a { color: #1d4ed8; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<nav class="toc" id="toc">
+  <strong>目录</strong>
+  <a href="#goal">1. 目标与边界</a>
+  <a href="#arch">2. 架构</a>
+  <a href="#data">3. 数据模型</a>
+  <a href="#ingest">4. 入库流水线</a>
+  <a href="#retrieval">5. 混合检索</a>
+  <a href="#answer">6. 作答与引用守卫</a>
+  <a href="#decisions">7. 关键决策</a>
+  <a href="#api">8. 接口</a>
+  <a href="#ui">9. 前端结构</a>
+  <a href="#perf">10. 性能与容量</a>
+  <a href="#limits">11. 已知限制</a>
+  <a href="#accept">12. 验收对照</a>
+</nav>
+
+<main class="page">
+  <h1>CiteBase 系统设计</h1>
+  <p class="subtitle">自托管知识库问答 · 可核查引用 · 离线可演示</p>
+  <p class="meta">v1.0 · 2026-11-01 · 代码：pjc/citebase</p>
+
+  <h2 id="goal">1. 目标与边界</h2>
+  <p>
+    目标只有一个：<b>让答案里的每一句都能被点开核对</b>。这不是"再加一个聊天框"，而是把"答得有据"
+    变成产品结构——数据模型存页码与标题路径、回答格式强制角标、服务端做引用校验、前端把出处当作
+    一等公民展示。顺带解决第二个问题：<b>答不出的时候要承认</b>，而不是生成一段听起来合理的内容。
+  </p>
+
+  <h3>1.1 范围内</h3>
+  <ul>
+    <li>PDF / Markdown / TXT 解析、分块、向量化、入库（含内容哈希去重）</li>
+    <li>向量召回 + 关键词召回，RRF 融合，中文按二元组切分以绕开 Postgres 分词缺陷</li>
+    <li>生成式（OpenAI 兼容接口）与抽取式（无密钥）两种作答模式，共用同一道引用校验</li>
+    <li>20 题评测集、三项指标、逐题明细、分臂消融，结果落库可重复对比</li>
+    <li>单端口交付：Bun 同时托管 API 与构建后的 SPA；Windows 一键 <code>start.bat</code></li>
+  </ul>
+
+  <h3>1.2 范围外（明确不做）</h3>
+  <ul>
+    <li>多租户、组织架构与权限体系（默认单团队自托管，网络边界即权限边界）</li>
+    <li>扫描件 OCR（只处理带文本层的 PDF，失败时明确报错）</li>
+    <li>模型微调、rerank 模型、查询改写（都留作后续，见第 11 节）</li>
+    <li>文档协同编辑与版本管理</li>
+    <li>托管运维与 SLA 承诺</li>
+  </ul>
+
+  <h2 id="arch">2. 架构</h2>
+<pre><code>Browser (React SPA: library / ask / eval)
+    │  fetch /api/*
+    ▼
+Bun + Hono  :15640
+    ├── ingest    parse → reflow → chunk → tokenize → embed → store
+    ├── retrieve  vector arm ─┐
+    │             keyword arm ─┴→ RRF fuse → top CONTEXT_K
+    └── answer    llm | extractive → citation guard → refusal
+    │
+    ├── static    ./public (vite build 产物)
+    ▼
+Postgres 17 + pgvector  :5440
+    documents / chunks(tsvector + vector(384)) / query_logs / eval_runs
+    │
+    └──(可选) OpenAI 兼容 /chat/completions</code></pre>
+
+  <div class="card">
+    <b>为什么只有一个进程。</b> 交付形态要求"起一个容器就能用"。API、静态页、入库、检索、评测都在同一个
+    Bun 进程里，少一个进程就少一处启动顺序、端口与健康检查问题。代价是无法只水平扩展检索层——
+    以本项目量级（万级 chunk）完全不需要。
+  </div>
+
+  <h2 id="data">3. 数据模型</h2>
+  <p>四张表，<code>sql/init.sql</code> 幂等建表，进程启动时再执行一次以兼容旧数据卷。</p>
+
+  <table>
+    <thead><tr><th>表</th><th>关键列</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>documents</code></td>
+        <td><code>id, filename, mime, size_bytes, sha256, page_count, chunk_count, status, error</code></td>
+        <td>文档清单。状态机 <code>pending → ready | failed</code>；<code>sha256</code> 上唯一索引实现幂等入库。</td>
+      </tr>
+      <tr>
+        <td><code>chunks</code></td>
+        <td><code>doc_id, ordinal, page, heading_path, content, char_start, char_end, search_text, tokens, embedding</code></td>
+        <td>检索与引用单元。<code>page/heading_path</code> 让引用可定位；<code>search_text</code> 存分词结果。</td>
+      </tr>
+      <tr>
+        <td><code>query_logs</code></td>
+        <td><code>question, mode, retrieved_ids[], cited_ids[], latency_ms</code></td>
+        <td>每次提问都留痕。<b>召回集与引用集分开记</b>，两者的差异就是"检索到了但没用上"或"用了没检索到"。</td>
+      </tr>
+      <tr>
+        <td><code>eval_runs</code></td>
+        <td><code>recall_at_5, citation_hit, refusal_acc, total, detail jsonb</code></td>
+        <td>一次评测一行，逐题明细进 jsonb，前端直接读表展示。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>索引</h4>
+  <pre><code>chunks_embedding_idx  hnsw (embedding vector_cosine_ops)   -- 无需训练集，灌数据即可用
+chunks_tokens_idx     gin  (tokens)                        -- 关键词臂
+chunks_doc_idx        btree (doc_id, ordinal)               -- 重建文档原文
+documents_sha_idx     unique (sha256)                       -- 去重</code></pre>
+
+  <div class="card">
+    <b>为什么不用 IVFFlat。</b> IVFFlat 需要先用数据训练聚类中心，空表导入时质量不可控；HNSW 写入即生效，
+    代价是索引更大、构建更慢，在万级数据量下都不是问题。
+  </div>
+
+  <h2 id="ingest">4. 入库流水线</h2>
+  <ol>
+    <li><b>hash</b>：<code>sha256(bytes)</code>，命中 <code>status=ready</code> 的既有文档直接返回原记录（<code>duplicate: true</code>），不重复消耗 embedding。</li>
+    <li><b>parse</b>：PDF 用 <code>unpdf</code> 按页取文（<code>mergePages: false</code>，页码天然正确）；Markdown 按标题切成"节"，每节记为 page 1 且带标题路径；TXT 整篇一页。</li>
+    <li><b>reflow</b>：PDF 文本是按版面硬换行的，直接把行当段落会让每个 chunk 都从句中开始。按"行尾是否为句末标点"重组段落。</li>
+    <li><b>chunk</b>：先按空行切段，超长段再按句末标点切；<code>CHUNK_SIZE=700</code> 打包，<code>CHUNK_OVERLAP=120</code> 把上一块尾部带入下一块，且<b>不跨页合并</b>（否则页码会撒谎）。</li>
+    <li><b>tokenize</b>：中文按二元组切分、英文按小写词切分，空格连接后同时写入 <code>search_text</code> 并生成 <code>tokens</code>。</li>
+    <li><b>embed</b>：<code>local</code> 模式为确定性哈希向量（词袋），<code>openai</code> 模式调用兼容接口；两种模式都做 L2 归一化。</li>
+    <li><b>store</b>：单事务写入 chunk（每批 40 行多值 insert），随后回填 <code>chunk_count/page_count</code> 并置 <code>ready</code>。</li>
+  </ol>
+
+  <blockquote>
+    <b>失败必须可见。</b> 解析或向量化抛错时写 <code>status=failed</code> + <code>error</code>，接口返回 422 而不是 500，
+    前端列表标红并显示原因。宁可让用户看到"这份 PDF 没有文本层"，也不要静默收录一个空文档。
+  </blockquote>
+
+  <h2 id="retrieval">5. 混合检索</h2>
+
+  <h3>5.1 两路召回</h3>
+  <table>
+    <thead><tr><th>臂</th><th>SQL 要点</th><th>擅长</th><th>短板</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>向量</td>
+        <td><code>order by embedding &lt;=&gt; $1 limit TOP_K</code></td>
+        <td>同义改写、问法与原文措辞不同</td>
+        <td>编号、错误码、金额这类精确串会被"抹平"</td>
+      </tr>
+      <tr>
+        <td>关键词</td>
+        <td><code>tokens @@ to_tsquery('simple', …)</code> + <code>ts_rank_cd</code></td>
+        <td>精确串、"只出现一次"的专有名词</td>
+        <td>问法不同就完全匹配不上</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 中文分词：Postgres 默认分词器会把整段中文当成一个词</h3>
+  <p>
+    <code>to_tsvector('simple','报销流程')</code> 只产生一个 lexeme，搜「报销」召回为零。
+    不装 <code>zhparser</code>（要编译扩展，交付环境不可控）的替代方案：<b>两侧都自己切</b>。
+    入库时把中文切成重叠二元组存进 <code>search_text</code>，查询串走同一个函数：
+  </p>
+  <pre><code>报销流程  →  报销 销流 流程        （入库）
+搜索「报销」→  报销                （查询，必然命中）</code></pre>
+  <p>
+    查询侧把词项按出现次数排序取前 24 个，用 <code>|</code> 连接成 OR 查询——单个罕见二元组不该让整条查询归零。
+  </p>
+
+  <h3>5.3 RRF 融合</h3>
+  <pre><code>score(d) = Σ over arms   1 / (RRF_K + rank(d)),   RRF_K = 60</code></pre>
+  <p>
+    余弦相似度与 <code>ts_rank_cd</code> 不在同一量纲上，直接相加需要标定，而标定值会随语料漂移。
+    RRF 只看排名，天然免疫这件事；<code>k=60</code> 把头部排名的差距压平，使"两路都认为相关"比"一路极自信"更重要。
+    融合后取 <code>CONTEXT_K=8</code> 作为上下文。
+  </p>
+
+  <h2 id="answer">6. 作答与引用守卫</h2>
+
+  <h3>6.1 两种模式，一道闸门</h3>
+  <table>
+    <thead><tr><th>模式</th><th>触发条件</th><th>产出</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>llm</code></td>
+        <td><code>ANSWER_MODE=auto</code> 且存在 API Key</td>
+        <td>2–4 句中文结论，每句带 <code>[n]</code>；温度 0.1；失败自动降级（已用 deepseek-chat 实测：0.6–1.1 s/题）</td>
+      </tr>
+      <tr>
+        <td><code>extractive</code></td>
+        <td>无 Key，或显式配置</td>
+        <td>按查询词重合度挑原句并附角标，零幻觉</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    抽取式不是"降级凑数"，它是离线演示的交付底线：客户拿到仓库第一件事是双击 <code>start.bat</code>，
+    不能要求他先申请密钥。为此它必须有真正的拒答能力——见下。
+  </p>
+
+  <h3>6.2 引用守卫（两种模式共用）</h3>
+  <ol>
+    <li><b>越界剔除</b>：<code>[9]</code> 在只给了 8 条上下文时必然被删掉，读者看不到死链。</li>
+    <li><b>零引用改写</b>：有效角标为 0 → 整段替换为「文档中未提及相关内容。」，并清空出处面板。</li>
+    <li><b>落库对账</b>：<code>retrieved_ids</code> 与 <code>cited_ids</code> 同时写入 <code>query_logs</code>，便于事后判断是检索问题还是生成问题。</li>
+  </ol>
+
+  <h3>6.3 抽取式如何避免"什么都敢答"</h3>
+  <p>
+    向量检索永远会返回 8 条最近邻，所以"有上下文"不等于"有依据"。抽取式加了两道词法门槛：
+  </p>
+  <ul>
+    <li><b>通用词不计分</b>：公司 / 员工 / 制度 / 多少 / the / company 这类词几乎每块都有，匹配上不构成证据；纯数字也降权。</li>
+    <li><b>至少两个特定词命中</b>（问题足够长时）：一个 chunk 的某一句必须同时命中两个非通用查询词才允许被引用。</li>
+  </ul>
+  <p>
+    实测效果直接体现在评测上：第一版没有这两道门槛，3 条不可回答问题全部被"答"了（拒答准确率 85%）；
+    加上之后复测为 100%，且 17 条可回答问题仍然全中。
+  </p>
+
+  <h2 id="decisions">7. 关键决策</h2>
+  <table>
+    <thead><tr><th>#</th><th>决策</th><th>理由</th><th>代价 / 何时重估</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>D1</td>
+        <td>pgvector + tsvector 同库，不引专用向量库</td>
+        <td>"起一个容器就能用"；少一个组件就少一处失败点</td>
+        <td>向量检索性能不及专用库；>百万 chunk 或需多副本时再评估</td>
+      </tr>
+      <tr>
+        <td>D2</td>
+        <td>关键词臂 + RRF，而非纯向量</td>
+        <td>编号、合同号、错误码靠向量容易失灵</td>
+        <td>多一次查询与融合成本（毫秒级）</td>
+      </tr>
+      <tr>
+        <td>D3</td>
+        <td>默认离线可跑（哈希向量 + 抽取式）</td>
+        <td>交付的分水岭：没有 Key 也必须能演示</td>
+        <td>离线向量本质是词袋，语义能力需 <code>EMBED_PROVIDER=openai</code></td>
+      </tr>
+      <tr>
+        <td>D4</td>
+        <td>引用可溯源写进数据模型（page / heading_path / 字符偏移）</td>
+        <td>没有位置信息的引用等于没引用</td>
+        <td>分块必须按页，chunk 不能跨页合并</td>
+      </tr>
+      <tr>
+        <td>D5</td>
+        <td>评测集先行，题集随代码版本化</td>
+        <td>把"能答"变成"可证明答对"</td>
+        <td>自建题集有偏；需扩充外部题与负例</td>
+      </tr>
+      <tr>
+        <td>D6</td>
+        <td>前端不引组件库，Tailwind 手写四类基础组件</td>
+        <td>UI 只有卡片/按钮/输入/角标，依赖树越小交付越稳</td>
+        <td>无障碍细节需自行补齐，已在 README 标注</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="api">8. 接口</h2>
+  <table>
+    <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/api/health</code></td><td>数据库连通性、当前回答模式、向量提供方与维度</td></tr>
+      <tr><td>GET</td><td><code>/api/documents</code></td><td>文档列表 + 文档数/块数统计</td></tr>
+      <tr><td>POST</td><td><code>/api/documents</code></td><td>multipart 上传（字段名 <code>file</code>）；超限 413，解析失败 422，重复 200 + <code>duplicate:true</code></td></tr>
+      <tr><td>DELETE</td><td><code>/api/documents/:id</code></td><td>删除文档并级联删除 chunk</td></tr>
+      <tr><td>GET</td><td><code>/api/documents/:id/text</code></td><td>按块重建原文（<code>text/plain</code>），供"打开原文"跳转</td></tr>
+      <tr><td>POST</td><td><code>/api/query</code></td><td>提出问题，返回 answer / mode / citations / retrievedIds / citedIds / latencyMs</td></tr>
+      <tr><td>GET</td><td><code>/api/query/recent</code></td><td>最近 12 次提问（排障用）</td></tr>
+      <tr><td>GET</td><td><code>/api/eval/questions</code></td><td>当前题集</td></tr>
+      <tr><td>POST</td><td><code>/api/eval/run</code></td><td>同步跑完 20 题并落库</td></tr>
+      <tr><td>GET</td><td><code>/api/eval/latest</code></td><td>最近一次评测（含逐题明细）</td></tr>
+    </tbody>
+  </table>
+  <p>
+    未知 <code>/api/*</code> 返回 JSON 404，其余路径回落到 <code>public/index.html</code>——单端口部署下刷新前端路由不会 404。
+  </p>
+
+  <h2 id="ui">9. 前端结构</h2>
+  <p>三个视图，一个目标：让"可核查"成为视觉语言，而不是靠装饰。</p>
+  <ul>
+    <li><b>文档库</b>：拖拽上传区 + 文档表（类型/页数/块数/状态点）。失败行左侧 3px 红条并显示错误摘要。</li>
+    <li><b>问答</b>：左栏对话流，右栏出处面板（≤1080px 折叠到答案下方）。答案中的 <code>[n]</code> 是按钮：点击高亮对应出处并滚动到可视区；出处头部可打开原文。</li>
+    <li><b>评测</b>：三张指标卡 + 逐题明细表（PASS/FAIL、期望文档、实际召回文档、耗时），一键重跑。</li>
+  </ul>
+  <p>
+    配色为低饱和深色底 + 单一靛蓝强调色，引用片段一律等宽字体：<b>等宽 = 原文，无衬线 = 系统生成</b>，
+    用户不读图例也能分辨哪句是文档原话。未配置密钥时顶部显示一条细横条说明当前为抽取式，不弹窗打断。
+  </p>
+
+  <h2 id="perf">10. 性能与容量</h2>
+  <table>
+    <thead><tr><th>环节</th><th>实测 / 预期</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>入库</td><td>2–5 s / 千块（本地向量）</td><td>解析 + 分块 + 向量 + 单事务写入；上传在请求内同步完成</td></tr>
+      <tr><td>检索</td><td>&lt; 10 ms（17 块语料）</td><td>两路各 limit 30，HNSW + GIN；语料增长后主要成本在 HNSW 遍历</td></tr>
+      <tr><td>抽取式作答</td><td>0–3 ms</td><td>纯词法打分，无网络</td></tr>
+      <tr><td>生成式作答</td><td>0.8–3 s</td><td>取决于模型服务；45 s 超时后降级为抽取式</td></tr>
+      <tr><td>评测</td><td>约 1 s / 20 题</td><td>抽取式模式下为本地计算；串行执行以保证单题耗时可解释</td></tr>
+    </tbody>
+  </table>
+  <p>
+    <code>pg.Pool</code> 上限 8 连接，前端上传串行（并发上传只会争用同一个池，并把内存打满）。
+    单文件上限 20 MB，<code>bodyLimit</code> 在路由层拦截并返回可读错误。
+  </p>
+
+  <h2 id="limits">11. 已知限制与风险</h2>
+  <table>
+    <thead><tr><th>限制</th><th>影响</th><th>缓解 / 后续</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>离线向量是哈希词袋，不是语义模型</td>
+        <td>无密钥时向量臂≈词面匹配，同义改写命中率低</td>
+        <td>配 <code>EMBED_PROVIDER=openai</code> 即切换为真语义向量；切换后必须 <code>bun run reembed</code></td>
+      </tr>
+      <tr>
+        <td>换向量模型 = 全量重算</td>
+        <td>不同模型/维度不可比，混用会得到无意义的相似度</td>
+        <td>提供 <code>bun run reembed</code>；README 与 .env 注释均写明</td>
+      </tr>
+      <tr>
+        <td>无 OCR</td>
+        <td>扫描件入库直接失败</td>
+        <td>失败态写明原因；OCR 属独立能力，不塞进本期</td>
+      </tr>
+      <tr>
+        <td>评测集自建、语料仅 3 份</td>
+        <td>100% 是上限值，不代表生产召回</td>
+        <td>评测页与文档同时标注；分臂消融用于说明趋势而非绝对值</td>
+      </tr>
+      <tr>
+        <td>无 rerank / 查询改写</td>
+        <td>多跳问题、模糊指代效果有限</td>
+        <td>下一步：cross-encoder rerank、问题改写、按文档过滤</td>
+      </tr>
+      <tr>
+        <td>单进程、无鉴权</td>
+        <td>只适合内网自托管</td>
+        <td>部署在反向代理后；需要鉴权时在网关层加</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="accept">12. 验收对照</h2>
+  <table>
+    <thead><tr><th>验收项</th><th>状态</th><th>证据</th></tr></thead>
+    <tbody>
+      <tr><td>双击 <code>start.bat</code> 后健康、打开界面</td><td><b style="color:var(--green)">通过</b></td><td>容器 healthy；<code>/api/health</code> 返回 <code>ok:true</code>；<code>/</code> 200 返回 SPA</td></tr>
+      <tr><td>上传 md/txt/pdf 成功，块数与页码正确</td><td><b style="color:var(--green)">通过</b></td><td>样例 3 份共 17 块；PDF 6 块跨 2 页；重复上传返回 <code>duplicate:true</code></td></tr>
+      <tr><td>无密钥提问给出抽取式答案 + 可点引用</td><td><b style="color:var(--green)">通过</b></td><td><code>mode=extractive</code>，引用数 ≥1，出处含文件名与章节/页码</td></tr>
+      <tr><td>不可回答问题明确拒答</td><td><b style="color:var(--green)">通过</b></td><td>3 条不可回答题全部返回「文档中未提及相关内容。」</td></tr>
+      <tr><td>配置密钥后走生成式，角标与出处一一对应</td><td><b style="color:var(--green)">通过</b></td><td>deepseek-chat（OpenAI 兼容接口）实测：20 题三项指标仍为 100%，单题 0.6–1.1 s；未出现越界角标或空引用</td></tr>
+      <tr><td>评测脚本输出三项指标并落库</td><td><b style="color:var(--green)">通过</b></td><td><code>bun run eval</code> / <code>tools/eval.ps1</code>；<code>eval_runs</code> 已有 4 条记录</td></tr>
+      <tr><td><code>bun test</code> 全绿、<code>biome check</code> 无错误</td><td><b style="color:var(--green)">通过</b></td><td>31 个用例通过；Biome 0 error；<code>tsc --noEmit</code> 无输出</td></tr>
+    </tbody>
+  </table>
+
+  <blockquote>
+    <b>关于第 5 项的实测条件。</b> 使用 DeepSeek（<code>https://api.deepseek.com/v1</code>，模型
+    <code>deepseek-chat</code>）跑完整 20 题：17 条可答题全部给出带 <code>[n]</code> 的答案且引用命中，
+    3 条不可答题全部拒答，无一条被引用守卫改写。注意 DeepSeek 只提供对话补全、<b>没有 /embeddings 接口</b>，
+    因此向量臂仍是本地哈希实现；要获得真语义向量需另接一家 embeddings 服务并 <code>bun run reembed</code>。
+  </blockquote>
+</main>
+
+<script>
+  // Highlight the section currently in view. Kept to a few lines: the doc has no
+  // runtime dependencies and must also work when opened straight from disk.
+  const links = [...document.querySelectorAll('#toc a')];
+  const sections = links
+    .map((a) => document.querySelector(a.getAttribute('href')))
+    .filter(Boolean);
+  const onScroll = () => {
+    const y = window.scrollY + 120;
+    let current = sections[0];
+    for (const s of sections) if (s.offsetTop <= y) current = s;
+    links.forEach((a) => a.classList.toggle('active', a.getAttribute('href') === '#' + current.id));
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>

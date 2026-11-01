@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "description": "20 条人工标注问题（17 条可回答 + 3 条不可回答）。expectedDoc 用于计算 recall@5 与引用命中率；answerable=false 的题只要被拒答就算正确。",
+  "questions": [
+    {
+      "id": "q01",
+      "question": "远程办公每周最多可以申请几天？",
+      "expectedDoc": "handbook.md",
+      "answerable": true,
+      "note": "答案：2 天，需提前 1 个工作日在 OA 申请"
+    },
+    {
+      "id": "q02",
+      "question": "入职满 3 年的员工有多少天年假？",
+      "expectedDoc": "handbook.md",
+      "answerable": true,
+      "note": "答案：15 天"
+    },
+    {
+      "id": "q03",
+      "question": "员工手册规定采购金额 5000 元以上需要谁审批？",
+      "expectedDoc": "handbook.md",
+      "answerable": true,
+      "note": "答案：部门负责人与财务负责人双签"
+    },
+    {
+      "id": "q04",
+      "question": "公司账号密码多久必须更换一次？",
+      "expectedDoc": "handbook.md",
+      "answerable": true,
+      "note": "答案：每 90 天"
+    },
+    {
+      "id": "q05",
+      "question": "主动离职需要提前多久提交书面通知？",
+      "expectedDoc": "handbook.md",
+      "answerable": true,
+      "note": "答案：30 天，试用期 3 天"
+    },
+    {
+      "id": "q06",
+      "question": "每位员工每年的学习基金额度是多少？",
+      "expectedDoc": "handbook.md",
+      "answerable": true,
+      "note": "答案：5000 元"
+    },
+    {
+      "id": "q07",
+      "question": "费用发生后多少天内必须提交报销单？",
+      "expectedDoc": "policy.txt",
+      "answerable": true,
+      "note": "答案：30 个自然日"
+    },
+    {
+      "id": "q08",
+      "question": "增值税普通发票的抬头应该写什么？",
+      "expectedDoc": "policy.txt",
+      "answerable": true,
+      "note": "答案：星澜科技有限公司，并填写税号"
+    },
+    {
+      "id": "q09",
+      "question": "加班到几点之后产生的打车费用可以报销？",
+      "expectedDoc": "policy.txt",
+      "answerable": true,
+      "note": "答案：22:00 之后"
+    },
+    {
+      "id": "q10",
+      "question": "备用金单笔最多可以申请多少？",
+      "expectedDoc": "policy.txt",
+      "answerable": true,
+      "note": "答案：10000 元，30 天内核销"
+    },
+    {
+      "id": "q11",
+      "question": "哪些费用属于不予报销的范围？",
+      "expectedDoc": "policy.txt",
+      "answerable": true,
+      "note": "答案：烟酒、礼品卡、个人娱乐、健身美容等"
+    },
+    {
+      "id": "q12",
+      "question": "单笔报销 2000 元到 10000 元由谁审批？",
+      "expectedDoc": "policy.txt",
+      "answerable": true,
+      "note": "答案：部门负责人"
+    },
+    {
+      "id": "q13",
+      "question": "How many days do vendors have to submit an invoice after the invoice date?",
+      "expectedDoc": "invoice-guide.pdf",
+      "answerable": true,
+      "note": "Answer: 45 days"
+    },
+    {
+      "id": "q14",
+      "question": "Who approves an invoice above USD 10,000?",
+      "expectedDoc": "invoice-guide.pdf",
+      "answerable": true,
+      "note": "Answer: the CFO"
+    },
+    {
+      "id": "q15",
+      "question": "What are the payment terms after an invoice is approved?",
+      "expectedDoc": "invoice-guide.pdf",
+      "answerable": true,
+      "note": "Answer: Net 30 from the approval date"
+    },
+    {
+      "id": "q16",
+      "question": "How does the system detect duplicate invoices?",
+      "expectedDoc": "invoice-guide.pdf",
+      "answerable": true,
+      "note": "Answer: same vendor plus same invoice number"
+    },
+    {
+      "id": "q17",
+      "question": "What late payment interest rate applies to overdue invoices?",
+      "expectedDoc": "invoice-guide.pdf",
+      "answerable": true,
+      "note": "Answer: 0.05% per day"
+    },
+    {
+      "id": "q18",
+      "question": "公司是否为员工提供股票期权？",
+      "expectedDoc": "handbook.md",
+      "answerable": false,
+      "note": "语料中没有任何股权激励内容"
+    },
+    {
+      "id": "q19",
+      "question": "2025 年公司的营业收入是多少？",
+      "expectedDoc": "policy.txt",
+      "answerable": false,
+      "note": "语料中没有财务经营数据"
+    },
+    {
+      "id": "q20",
+      "question": "Does the company reimburse gym memberships for employees?",
+      "expectedDoc": "invoice-guide.pdf",
+      "answerable": false,
+      "note": "英文语料只讲发票流程，没有员工福利"
+    }
+  ]
+}

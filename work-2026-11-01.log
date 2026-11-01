@@ -1,0 +1,206 @@
+# CiteBase 工作日志 — 2026-11-01
+
+项目：f:/ai.workspace/Wow/outwork/docs/upwork/pjc/citebase
+目标：交付一个可投标的 RAG 知识库问答项目（上传 → 解析 → 分块 → 向量/全文双索引 → 混合检索 → 带引用作答 → 评测），
+并且在没有 API Key 的机器上也能完整演示。
+
+---
+
+## 1. 骨架与环境（scaffold）
+
+修改文件
+- docker-compose.yml：仅 postgres（pgvector/pgvector:pg17），宿主端口 5440，挂载 sql/init.sql，带 healthcheck。
+- sql/init.sql：documents / chunks / query_logs / eval_runs 四表 + HNSW + GIN + 唯一哈希索引。
+- .env.example / .gitignore / tsconfig.json / biome.json / vite.config.ts / tailwind.config.js / postcss.config.js
+- start.ps1 / start.bat
+
+要点
+- 端口选 5440（库）与 15640（应用），避开本机已占用的 5432/5433/15555/15556/3000/3002/15610~15620/5173~5175。
+- 只把数据库放进容器，应用用宿主机 Bun 跑，保持改-跑循环快。
+- start.ps1 六步式：docker 检查 → .env 生成（随机密码）→ compose up → 等 healthy → bun install → vite build → 起服务。
+
+修正（当日第二次修改 start.ps1）
+- 问题：PowerShell 5.1 的 `Set-Content -Encoding utf8` 会写 BOM，BOM 会被 docker compose 当成第一个键名的一部分，
+  导致 POSTGRES_USER 解析失败。
+- 处理：改用 `[System.IO.File]::WriteAllText(..., UTF8Encoding($false))` 写无 BOM 文件。
+- 同时新增：构建产物过期判断（web 下文件比 public/index.html 新则重建）、第 7 步自动 `bun run seed`。
+
+---
+
+## 2. 配置与领域类型
+
+修改文件
+- src/config.ts：zod 在 import 时校验一次；非法配置打印全部问题后 exit(1)。
+- src/types.ts：DocStatus / DocumentRow / ChunkHit / Citation / AnswerResult / ParsedPage / ChunkDraft。
+
+目的
+- 配置错误必须在启动时炸掉，不能等到入库到一半才发现 DATABASE_URL 缺失。
+- `effectiveAnswerMode()` 把 auto 解析为 llm 或 extractive，这是"无密钥可演示"的唯一开关点。
+
+---
+
+## 3. 入库（ingest）
+
+修改文件
+- src/ingest/parse.ts：PDF（unpdf，mergePages:false）/ Markdown（按标题切节）/ TXT 三种解析，统一输出 ParsedPage[]。
+- src/ingest/chunk.ts：按空行分段 → 超长段按句末标点切 → 700 字符打包 → 120 字符重叠 → 不跨页合并。
+- src/ingest/store.ts：sha256 去重、pending/failed/ready 状态机、单事务批量写 chunk、回填计数。
+
+关键取舍
+- Markdown 每个标题节记为 page 1 且带 heading_path：Markdown 没有真实页码，用标题路径承载位置信息。
+- PDF 必须按页切，所以 chunk 不允许跨页；页码错了，引用就没有意义。
+- 重叠从上一块尾部取，并对齐到句末，避免新块从句中开始。
+
+当日修正（PDF 段落重排）
+- 问题：PDF 抽出的文本按版面硬换行，按行切块后每个块都从句中开始，引用片段读起来像撕开的纸。
+- 处理：新增 `reflow()`：行尾是句末标点就断段，否则与下一行拼成一段；`1. Scope` 这类标题独立成行。
+- 影响：只影响 PDF 解析，Markdown/TXT 保留作者换行。
+
+---
+
+## 4. 检索（retrieve）
+
+修改文件
+- src/retrieve/tokenize.ts：中文重叠二元组 + 英文小写词；查询侧生成 OR 连接的 tsquery（取前 24 个词项）。
+- src/retrieve/embed.ts：local（FNV-1a 哈希到 384 维、亚线性词频、L2 归一化）/ openai（兼容接口，批 32，校验维度）。
+- src/retrieve/rrf.ts：纯函数融合 `1/(k+rank)`，k=60。
+- src/retrieve/search.ts：向量臂 + 关键词臂各取 TOP_K，融合后取 CONTEXT_K。
+
+根因记录
+- Postgres 默认分词器不切中文：`to_tsvector('simple','报销流程')` 只有一个词，搜「报销」召回为零。
+  不装 zhparser 的替代方案是自己切二元组，入库与查询共用同一函数，两侧必然相遇。
+
+---
+
+## 5. 作答（answer）
+
+修改文件
+- src/answer/generate.ts：编号上下文 + 严格提示词 + 温度 0.1 + 45s 超时。
+- src/answer/extractive.ts：按查询词重合度挑句，附角标。
+- src/answer/guard.ts：角标越界剔除、零引用改写为「文档中未提及相关内容。」。
+- src/answer/index.ts：检索 → 作答 → 守卫，LLM 失败自动降级并回传 degraded 原因。
+
+当日修正（拒答能力不足，重要）
+- 现象：首轮评测拒答准确率 85%，3 条不可回答问题全部被"答"了。
+  例：问「公司是否提供股票期权」，答的是「本手册适用于全体正式员工…」。
+- 根因：抽取式只要句中出现任意一个查询词就给分；而「公司 / 员工 / 2025 / company」这类通用词几乎每个块都有，
+  于是"有上下文"被误判为"有依据"。向量检索永远返回 8 条最近邻，所以"有上下文"是常态。
+- 修复：① 通用词表（公司、员工、制度、多少、哪些 / the、company、policy…）与纯数字不构成证据；
+  ② 问题含 ≥2 个特定词时，某句必须同时命中 2 个才允许引用；③ 无特定词或无达标句 → 空答案 → 守卫改写为拒答。
+- 复测：拒答准确率 85% → 100%，17 条可回答题未出现新的误拒。
+
+---
+
+## 6. 接口与前端
+
+修改文件
+- src/index.ts：Hono 应用（bodyLimit 20MB、请求日志、/api/health、静态托管 public/、SPA 回落、未知 API 返回 JSON 404、
+  启动时执行 sql/init.sql 以兼容旧数据卷）。
+- src/routes/documents.ts：列表 + 统计 / 上传（重复 200 + duplicate / 解析失败 422）/ 删除 / 原文。
+- src/routes/query.ts：zod 校验问题，作答后写 query_logs（retrieved_ids 与 cited_ids 分开存）。
+- src/routes/eval.ts：题集 / 最新一次 / 触发评测。
+- web/src：App + 三视图 + UploadZone / DocumentList / AnswerPanel / CitationList / MetricCards。
+
+要点
+- 上传与解析在请求内同步完成（单文件毫秒到数秒），不引任务队列。
+- 解析失败返回 422 而不是 500：这是可展示的业务结果，不是服务器故障。
+- 回答里的角标是按钮，点击高亮并滚动出处；出处头部可打开原文（/api/documents/:id/text）。
+- 未配置密钥时顶部细横条提示抽取式，不弹窗打断。
+
+---
+
+## 7. 评测
+
+修改文件
+- evals/questions.json：20 条（17 可答 + 3 不可答），含 expectedDoc 与 note。
+- evals/docs/handbook.md、policy.txt：手写中文语料；invoice-guide.pdf 由脚本生成（英文，带真实分页）。
+- src/eval/{questions,metrics,run,ablation,cli}.ts、src/tools/make-sample-pdf.ts。
+- tools/eval.ps1：纯 ASCII，通过 HTTP 调 /api/eval/run 并打印指标表。
+
+指标定义
+- recall@5：期望文档进入前 5 块（分母：可答题）。
+- 引用命中率：角标确实指向期望文档（分母：可答题）。
+- 拒答准确率：可答题"作答且引用命中" + 不可答题"明确拒答"（分母：全部 20 条）。
+
+结果（run #4 抽取式；run #5 生成式见第 11 节）
+- recall@5 100% / 引用命中 100% / 拒答准确 100%。
+- 分臂消融（17 可答）：向量 94.1%（MRR 0.919）/ 关键词 100%（1.000）/ 融合 100%（0.956）。
+- 说明：语料 3 份、题集自建，100% 是上限值；离线向量本质是词袋，与关键词臂同质，融合收益不明显，
+  这是离线可跑的代价，已写入 docs/evaluation.html。
+
+---
+
+## 8. 验证记录
+
+执行并观察到的结果
+- `bun install`：215 包，bun 1.3.11。
+- `bun test`：31 pass / 0 fail，6 个测试文件（chunk、parse、rrf、tokenize、guard、metrics）。
+- `bunx tsc --noEmit`：无输出。
+- `bunx biome check src web/src`：0 error（先 --fix 修了导入排序与格式，再手改 6 处：a11y 语义元素、
+  数组索引 key、赋值表达式、hook 依赖、模板字符串）。
+- `bun run build`：1593 modules，产物 255 KB js / 21 KB css。
+- `docker compose up -d` + 等 healthy：healthy；`bun run seed`：3 份文档，17 块。
+- `bun run eval`：三项 100%，写入 eval_runs（run 2/3/4）。
+- 服务端到端：/api/health ok、/ 200 返回 SPA、/assets/* 200、上传 1 块新文档、重复上传 duplicate:true、
+  删除 200、/api/documents/:id/text 200、POST /api/eval/run 200、未知 /api/* 404、中文 JSON 以 UTF-8 正确返回。
+
+未验证（当日晚些时候已补测，见第 11 节）
+- 生成式路径当时没有真实调用（本机无 OPENAI_API_KEY）。代码路径与降级逻辑已就位，README 与设计文档均已标注。
+
+---
+
+## 9. 文档
+
+- README.md：快速开始、无密钥演示、环境变量、API、测试与评测、已知限制、数据与隐私。
+- docs/system-design.html：目标与边界、架构、数据模型、入库流水线、混合检索、作答与守卫、D1–D6 决策、
+  接口、前端结构、性能、限制、验收对照（含"未验证"项）。
+- docs/evaluation.html：指标定义、语料、20 题明细、结果、分臂消融、失败分析（85%→100% 全过程）、局限、复现命令。
+- site/index.html：客户向介绍页，含实测指标与交付边界。
+
+HTML 文档遵循既有约定：slate 灰阶暗色、右侧固定 TOC + 锚点 + 滚动高亮、`:root` 定义变量（注意不是 `::root`）、
+`@media print` 反色为白底黑字。
+
+---
+
+## 10. 后续可做（未实施）
+
+- cross-encoder rerank、查询改写、按文档/时间过滤。
+- 扩充不可回答题与"部分相关但缺答案"的难负例。
+- 扫描件 OCR（当前明确不做）。
+- 上传并发控制与进度事件（当前串行 + 同步完成）。
+- 若面向海外客户：把回答语言从"固定简体中文"改为"跟随问题语言"（需要改提示词，属行为变更，未做）。
+
+---
+
+## 11. 补充：接入 DeepSeek 实测生成式路径（同日）
+
+背景
+- 用户提供 DeepSeek 密钥，用于验证此前标注为"未验证"的生成式路径。
+- DeepSeek 的 OpenAI 兼容接口只覆盖对话补全，没有 /embeddings 端点，因此 EMBED_PROVIDER 必须保持 local。
+
+修改文件
+- .env（未入库，已被 .gitignore 忽略）：OPENAI_BASE_URL=https://api.deepseek.com/v1、填入密钥、
+  OPENAI_CHAT_MODEL=deepseek-chat；EMBED_PROVIDER 保持 local。密钥不写入任何提交文件。
+- .env.example：补充注释说明 DeepSeek 没有 /embeddings，避免使用者误把 EMBED_PROVIDER 改成 openai 后报错。
+- README.md：新增 DeepSeek 说明；评测结果改为 run #4（抽取式）与 run #5（生成式）对照表；限制条目更新。
+- docs/system-design.html：验收表第 5 项由"未验证"改为"通过"，并写明实测条件与"无 embeddings 接口"的约束。
+- docs/evaluation.html：新增 4. 双模式结果对照表、6.6 生成式路径实测小节（角标位置/引用数量/跨文档/语言/耗时），
+  局限表替换"无生成式实测"条目。
+- site/index.html：指标段补一句生成式复跑结果。
+- 未改动任何 src/ 代码：接入只靠环境变量，说明配置边界设计有效。
+
+实测记录
+- /api/health：mode=llm，hasLlmKey=true，embedProvider=local。
+- 提问「费用发生后多少天内必须提交报销单？」：mode=llm，答案两句、均带 [1]，引用指向 policy.txt chunk#33，957ms。
+- 提问「公司是否提供股票期权？」：返回「文档中未提及相关内容。」，citations 为空，640ms。
+- bun run eval（20 题全走 deepseek-chat）：三项指标仍为 100%，单题 0.58–1.12 s，写入 eval_runs（run #5）。
+- 抽查 20 条答案：每题 0–3 个角标，编号均落在 1..8 且指向正确文档；未出现被守卫改写的题。
+
+观察到但未修改（属产品行为选择，需拍板）
+- 角标位置为句末，但部分落在句号前（`[1]。`），可后处理移到标点之后。
+- 英文提问也答中文（提示词约束为简体中文）；面向海外需改为跟随问题语言。
+- 生成式模式只在 DeepSeek 上验证过，换模型需重跑并对比"被守卫改写的题数"。
+
+安全提示
+- 密钥已在对话中明文出现，建议在 DeepSeek 控制台轮换后再用于正式环境；
+  本仓库内仅存于 .env（已忽略），未进入 README、文档、日志与代码。

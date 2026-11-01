@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink-900 text-paper font-sans antialiased;
+    background-image: radial-gradient(
+        60rem 40rem at 15% -10%,
+        rgba(99, 102, 241, 0.1),
+        transparent 60%
+      ), radial-gradient(40rem 30rem at 95% 0%, rgba(34, 211, 238, 0.06), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.35);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #232d3d;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #33415c;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-xl border border-white/5 bg-ink-800/80 shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset];
+  }
+
+  .hairline {
+    @apply border-white/5;
+  }
+
+  .marker {
+    @apply ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] bg-accent/20 px-1 align-[2px] font-mono text-[11px] font-medium text-accent-soft transition-colors hover:bg-accent/40 hover:text-white;
+  }
+
+  .marker-active {
+    @apply bg-accent text-white;
+  }
+}

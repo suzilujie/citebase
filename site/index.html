@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CiteBase · 每一句答案都能点开原文</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --surface: #121821;
+    --surface-2: #1a2230;
+    --line: #222c3b;
+    --text: #e6edf3;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --accent: #6366f1;
+    --accent-soft: #a5b4fc;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.75 "Poppins", system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background-image:
+      radial-gradient(48rem 32rem at 12% -12%, rgba(99, 102, 241, 0.14), transparent 62%),
+      radial-gradient(36rem 24rem at 92% 4%, rgba(34, 211, 238, 0.08), transparent 58%);
+    background-attachment: fixed;
+  }
+  a { color: var(--accent-soft); text-decoration: none; }
+  a:hover { color: #fff; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+  header.top {
+    position: fixed; inset: 0 0 auto 0; height: 58px; z-index: 20;
+    background: rgba(11, 15, 20, 0.86);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+  }
+  header.top .wrap { height: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; }
+  .dot { width: 9px; height: 9px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 4px rgba(99,102,241,.16); }
+  .brand small { display: block; font: 500 10px/1.4 var(--mono); letter-spacing: .18em; color: var(--faint); text-transform: uppercase; }
+  nav.top-links { display: flex; gap: 18px; font-size: 13px; color: var(--muted); }
+  nav.top-links a { color: var(--muted); }
+  nav.top-links a:hover { color: var(--text); }
+
+  main { padding-top: 58px; }
+  .hero { padding: 76px 0 44px; }
+  .eyebrow { font: 500 11px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--accent-soft); }
+  h1 { font-size: 42px; line-height: 1.2; letter-spacing: -0.025em; margin: 18px 0 16px; font-weight: 600; }
+  h1 em { font-style: normal; color: var(--accent-soft); }
+  .lede { font-size: 17px; color: var(--muted); max-width: 720px; }
+  .cta { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 500; border: 1px solid transparent; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #4f46e5; color: #fff; }
+  .btn-ghost { border-color: var(--line); color: var(--text); background: var(--surface); }
+  .btn-ghost:hover { border-color: #33415c; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card {
+    background: linear-gradient(180deg, rgba(26,34,48,.72), rgba(18,24,33,.72));
+    border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: #f1f5f9; }
+  .card p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .num { font: 500 26px/1.2 var(--mono); color: var(--text); }
+  .num span { font-size: 13px; color: var(--faint); }
+
+  section { padding: 46px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 24px; letter-spacing: -0.015em; margin: 0 0 8px; font-weight: 600; }
+  h2 + p { margin-top: 0; color: var(--muted); font-size: 14.5px; }
+
+  .steps { counter-reset: step; display: grid; gap: 14px; margin-top: 26px; }
+  .step { display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start; }
+  .step::before {
+    counter-increment: step; content: counter(step);
+    font: 500 12px/30px var(--mono); text-align: center;
+    color: var(--accent-soft); background: rgba(99,102,241,.12);
+    border: 1px solid rgba(99,102,241,.28); border-radius: 8px; height: 30px;
+  }
+  .step h4 { margin: 2px 0 2px; font-size: 14.5px; color: #f1f5f9; }
+  .step p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+  .demo { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .demo-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--line); font: 500 10.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  .demo-body { display: grid; grid-template-columns: 1.5fr 1fr; }
+  .bubble { margin: 16px 16px 0 auto; max-width: 78%; background: rgba(99,102,241,.14); border: 1px solid rgba(99,102,241,.28); border-radius: 10px 10px 2px 10px; padding: 8px 12px; font-size: 13.5px; }
+  .answer { padding: 12px 16px 18px; font-size: 14px; }
+  .cite { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; margin-left: 3px; border-radius: 4px; background: rgba(99,102,241,.22); color: var(--accent-soft); font: 500 11px/1 var(--mono); vertical-align: 2px; }
+  .sources { border-left: 1px solid var(--line); padding: 14px 16px; background: rgba(11,15,20,.45); }
+  .source { margin-bottom: 12px; padding-left: 10px; border-left: 2px solid rgba(99,102,241,.35); }
+  .source .meta { font: 500 10.5px/1.6 var(--mono); color: var(--faint); }
+  .source p { margin: 4px 0 0; font: 400 11.5px/1.7 var(--mono); color: var(--muted); }
+  .refusal { margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(148,163,184,.18); border-radius: 8px; font-size: 12.5px; color: var(--faint); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 20px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { background: var(--surface-2); color: #f1f5f9; font-weight: 500; font-size: 12.5px; }
+  td { color: var(--muted); }
+  td strong { color: var(--text); font-weight: 500; }
+  .mono { font-family: var(--mono); font-size: 12.5px; }
+
+  footer { padding: 34px 0 60px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
+  .toc {
+    position: fixed; top: 96px; right: 24px; width: 148px; z-index: 10;
+    font-size: 12px; color: var(--faint); border-left: 1px solid var(--line); padding-left: 12px;
+  }
+  .toc strong { display: block; font: 500 10px/1.6 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: #475569; margin-bottom: 8px; }
+  .toc a { display: block; color: var(--faint); padding: 3px 0; }
+  .toc a:hover { color: var(--accent-soft); }
+  @media (max-width: 1200px) { .toc { display: none; } }
+  @media (max-width: 820px) {
+    .grid-2, .grid-3, .demo-body { grid-template-columns: 1fr; }
+    .sources { border-left: 0; border-top: 1px solid var(--line); }
+    h1 { font-size: 32px; }
+    .hero { padding-top: 52px; }
+  }
+  @media print {
+    body { background: #fff; color: #111; }
+    header.top, .toc, .cta { display: none; }
+    .card, .demo, .demo-body { border-color: #ccc; background: #fff; }
+    a { color: #1d4ed8; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>CiteBase<small>citation-grounded q&amp;a</small></span>
+    </div>
+    <nav class="top-links">
+      <a href="#problem">解决什么</a>
+      <a href="#how">怎么做的</a>
+      <a href="#proof">指标</a>
+      <a href="#scope">范围</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="toc">
+  <strong>本页</strong>
+  <a href="#problem">1. 问题</a>
+  <a href="#how">2. 做法</a>
+  <a href="#proof">3. 指标</a>
+  <a href="#scope">4. 交付范围</a>
+  <a href="#contact">5. 联系</a>
+</nav>
+
+<main>
+  <section class="hero" id="problem" style="border-top:0">
+    <div class="wrap">
+      <p class="eyebrow">self-hosted · rag · verifiable citations</p>
+      <h1>让知识库问答<em>每句都能点开原文</em>，<br />答不出就明说。</h1>
+      <p class="lede">
+        制度、手册、合同散落在共享盘和邮件里，找一句话要翻十分钟。通用聊天机器人能答，但你没法确认它是不是编的。
+        CiteBase 把文档灌进你自己的数据库，回答里每个结论都带编号，右侧列出对应原文与页码；
+        文档里没有的内容，它会直接说「文档中未提及」，而不是猜一个听起来合理的答案。
+      </p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#proof">看实测指标</a>
+        <a class="btn btn-ghost" href="#how">看实现方式</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>三步，全部跑在你自己的一台机器上</h2>
+      <p>不需要向量数据库，不需要云账号；一个 Postgres 容器加一个进程。</p>
+      <div class="steps">
+        <div class="step">
+          <div>
+            <h4>上传：PDF / Markdown / TXT</h4>
+            <p>按页解析、按标题与段落切分（700 字符窗口、120 字符重叠），中文按二元组切词后再建全文索引，避免 Postgres 默认分词器把整段中文当成一个词。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>检索：向量 + 关键词，按排名融合</h4>
+            <p>两路各取 30 条候选，用 RRF（k=60）融合成 8 条上下文。语义相近的问题向量召回命中，合同编号、错误码这类精确串靠关键词召回命中。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>作答：角标 + 校验 + 拒答</h4>
+            <p>模型或抽取式模块只能使用这 8 条上下文。回答生成后统一过一道引用校验：越界角标被剔除，有效引用为 0 时整段改写为「文档中未提及」。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-head">
+          <span>ask · extractive mode (no api key)</span>
+          <span>8 chunks · 12 ms</span>
+        </div>
+        <div class="demo-body">
+          <div>
+            <div class="bubble">费用发生后多少天内必须提交报销单？</div>
+            <div class="answer">
+              费用发生后应在 30 个自然日内提交报销单<span class="cite">1</span>，超过 30 天的需部门负责人书面说明原因。
+              跨年度费用须在当年 12 月 20 日前提交<span class="cite">1</span>。
+            </div>
+            <div class="refusal">
+              问「公司是否提供股票期权？」→ 文档中未提及相关内容。（引用数为 0，系统拒绝编造）
+            </div>
+          </div>
+          <div class="sources">
+            <div class="source">
+              <div class="meta">1 · policy.txt · 第二章 报销时限</div>
+              <p>第四条 费用发生后应在 30 个自然日内提交报销单，超过 30 天的需部门负责人书面说明原因。</p>
+            </div>
+            <div class="source">
+              <div class="meta">2 · handbook.md · 四、差旅与出差</div>
+              <p>出差前须在 OA 填写《出差申请单》，注明目的地、起止日期、事由与预算。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="proof">
+    <div class="wrap">
+      <h2>指标：可重复跑，也敢报消融</h2>
+      <p>20 条人工标注问题（17 条可回答、3 条不可回答），语料为 3 份样例文档（含一份英文 PDF）。同一份题集写入数据库，可反复跑分对比。</p>
+      <div class="grid-3" style="margin-top:22px">
+        <div class="card"><div class="num">100<span>%</span></div><h3>Recall@5</h3><p>期望文档进入前 5 个文本块</p></div>
+        <div class="card"><div class="num">100<span>%</span></div><h3>引用命中率</h3><p>回答中的角标确实指向期望文档</p></div>
+        <div class="card"><div class="num">100<span>%</span></div><h3>拒答准确率</h3><p>该答的答、该拒的拒</p></div>
+      </div>
+
+      <table>
+        <thead><tr><th>检索臂（17 条可回答问题）</th><th>Recall@5</th><th>MRR</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>仅向量</td><td class="mono">94.1%</td><td class="mono">0.919</td><td>离线哈希向量，偏词面</td></tr>
+          <tr><td>仅关键词</td><td class="mono">100%</td><td class="mono">1.000</td><td>中文二元组 + tsquery</td></tr>
+          <tr><td><strong>融合（RRF）</strong></td><td class="mono">100%</td><td class="mono">0.956</td><td>换真嵌入模型后向量臂才会体现语义优势</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:16px;font-size:13px;color:var(--faint)">
+        同一题集在生成式模式（deepseek-chat）下复跑，三项指标仍为 100%，单题 0.6–1.1 秒。
+        语料与问题集由同一人编写，100% 是这套小样本的上限值，不代表生产召回率；
+        上面的分臂消融才是重点——它说明两路召回各自缺什么，也直接暴露了离线模式的弱点。
+      </p>
+    </div>
+  </section>
+
+  <section id="scope">
+    <div class="wrap">
+      <h2>交付范围与边界</h2>
+      <div class="grid-2" style="margin-top:20px">
+        <div class="card">
+          <h3>包含</h3>
+          <p>文档解析 / 分块 / 向量与全文双索引、混合检索、引用校验与拒答、20 题评测看板、文档库管理、单端口部署、Windows 一键启动、无密钥离线演示。</p>
+        </div>
+        <div class="card">
+          <h3>不包含</h3>
+          <p>多租户与权限体系、扫描件 OCR、模型微调、文档协同编辑、托管运维。默认单团队自托管，数据不出内网。</p>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>项</th><th>取值</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>数据库</td><td class="mono">Postgres 17 + pgvector</td><td>向量与全文同库，不引第三方向量库</td></tr>
+          <tr><td>端口</td><td class="mono">5440 / 15640</td><td>避开本机已占用的 5432、5433、15555 等</td></tr>
+          <tr><td>启动</td><td class="mono">start.bat</td><td>检查 Docker → 起库 → 装依赖 → 构建 → 灌样例 → 起服务</td></tr>
+          <tr><td>回答模式</td><td class="mono">llm / extractive</td><td>无密钥自动降级为抽取式，可离线完整演示</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer id="contact">
+    <div class="wrap">
+      <p style="margin:0 0 6px">CiteBase · 自托管知识库问答，带可核查引用。</p>
+      <p style="margin:0">演示与报价：请通过 Upwork 消息联系，可提供 3 份样例文档与 20 题评测的可复现脚本。</p>
+    </div>
+  </footer>
+</main>
+</body>
+</html>
